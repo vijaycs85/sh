@@ -1,0 +1,56 @@
+#!/usr/bin/env bash
+# Move DB dump to new commit hash
+set -euo pipefail
+
+function output {
+    style_start=""
+    style_end=""
+    if [ "${2:-}" != "" ]; then
+    case $2 in
+        "success")
+            style_start="\033[0;32m"
+            style_end="\033[0m"
+            ;;
+        "error")
+            style_start="\033[31;31m"
+            style_end="\033[0m"
+            ;;
+        "info"|"warning")
+            style_start="\033[33m"
+            style_end="\033[39m"
+            ;;
+        "heading")
+            style_start="\033[1;33m"
+            style_end="\033[22;39m"
+            ;;
+    esac
+    fi
+
+    builtin echo -e "${style_start}${1}${style_end}"
+}
+
+function mv_db_dump() {
+   NEW_HASH=$(git rev-parse --short HEAD)
+   OLD_HASH=$(ls -t /tmp/db-* | head -1 |awk -F"db-" '{ print $2 }' | awk -F".sql" '{print $1}')
+
+   if [ "$NEW_HASH" = '' ]; then
+     output "There is no commit hash to copy to" "error"
+     exit 1;
+   fi
+
+   if [ "$OLD_HASH" = '' ]; then
+     output "There is no has file to copy from" "error"
+     exit 1;
+   fi
+
+   if [ "$NEW_HASH" = "$OLD_HASH" ];
+    then
+      output "File already exists" "warning"
+      exit 0;
+   fi
+   mv /tmp/db-"$OLD_HASH".sql /tmp/db-"$NEW_HASH".sql
+  output "copied SQL dump from $OLD_HASH to $NEW_HASH" "success"
+
+}
+
+mv_db_dump
